@@ -27,6 +27,7 @@ import getBuffer from './utils/get-buffer';
 import {DnsLookupIpVersion, isDnsLookupIpVersion, dnsLookupIpVersionToFamily} from './utils/dns-ip-version';
 import deprecationWarning from '../utils/deprecation-warning';
 import {PromiseOnly} from '../as-promise/types';
+import isUnixSocketURL from './utils/is-unix-socket-url';
 
 type HttpRequestFunction = typeof httpRequest;
 type Error = NodeJS.ErrnoException;
@@ -1206,6 +1207,12 @@ export default class Request extends Duplex implements RequestEvents<Request> {
 				const redirectUrl = new URL(redirectBuffer, url);
 				const redirectString = redirectUrl.toString();
 				decodeURI(redirectString);
+
+				// eslint-disable-next-line @typescript-eslint/no-unnecessary-type-assertion
+				if (!isUnixSocketURL(url as URL) && isUnixSocketURL(redirectUrl)) {
+					this._beforeError(new RequestError('Cannot redirect to UNIX socket', {}, this));
+					return;
+				}
 
 				// Redirecting to a different site, clear sensitive data.
 				if (redirectUrl.hostname !== url.hostname) {
